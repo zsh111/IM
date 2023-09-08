@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-//测试数据库连接
+//测试数据库连接，使用userbasic创建表
 
 func main() {
 	db, err := gorm.Open(mysql.Open("root:123456@tcp(0.0.0.0:3306)/testdb?charset=utf8mb4&parseTime=True&loc=Local"),&gorm.Config{})

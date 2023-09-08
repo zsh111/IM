@@ -1,0 +1,2 @@
+mysql:
+  dns: root:123456@tcp(0.0.0.0:3306)/testdb?charset=utf8mb4&parseTime=True&loc=Local
