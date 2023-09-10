@@ -3,6 +3,7 @@ package main
 import (
 	"IMsystem/models"
 	"fmt"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -18,9 +19,12 @@ func main() {
 	//迁移schema
 	db.AutoMigrate(&models.UserBasic{})	
 
-	user := &models.UserBasic{}
-	user.Name = "张三"
-	db.Create(user)
+	user := &models.UserBasic{
+		Name: "张三",
+		LoginTime: time.Now(),
+		HeartBeatTime: time.Now(),
+		LoginOutTime: time.Now(),
+	}
 
 	//Read
 	fmt.Printf("db.First(user, 1): %v\n", db.First(user, 1))

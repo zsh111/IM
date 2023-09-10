@@ -1,1 +1,2 @@
-show databases;
+
+SELECT * FROM user_basic;
