@@ -18,6 +18,7 @@ type UserBasic struct {
 	Identity      string
 	ClientIP      string
 	ClientPort    string
+	Salt          string //加密
 	LoginTime     time.Time
 	HeartBeatTime time.Time
 	LoginOutTime  time.Time `gorm:"column:login_out_time" json:"login_out_time"` //修改数据库显示格式
@@ -40,6 +41,25 @@ func GetUserList() []*UserBasic {
 	return data
 }
 
+func FindUserByName(name string) UserBasic {
+	//按name查找，只返回第一个找到的结果
+	user := UserBasic{}
+	utils.DB.Where("name = ?", name).First(&user)
+	return user
+}
+
+func FindUserByEmail(email string) UserBasic {
+	user := UserBasic{}
+	utils.DB.Where("email = ?", email).First(&user)
+	return user
+}
+
+func FindUserByPhone(Phone string) UserBasic {
+	user := UserBasic{}
+	utils.DB.Where("phone = ?", Phone).First(&user)
+	return user
+}
+
 /*----------下面实现增删改查----------*/
 //增
 func CreateUser(user UserBasic) *gorm.DB {
@@ -54,4 +74,11 @@ func DeleteUser(user UserBasic) *gorm.DB {
 // 修改，需要指定修改字段，并未生效
 func UpdateUser(user UserBasic) *gorm.DB {
 	return utils.DB.Model(&user).Where("id=?", user.ID).Updates(UserBasic{Name: user.Name, PassWord: user.PassWord, Email: user.Email, Phone: user.Phone})
+}
+
+// 查询 TODO
+func GetUser(name string, password string) UserBasic {
+	user := UserBasic{}
+	utils.DB.Where("name=? and pass_word=?", name, password).First(&user)
+	return user
 }

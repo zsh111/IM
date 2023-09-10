@@ -2,7 +2,9 @@ package service
 
 import (
 	"IMsystem/models"
+	"IMsystem/utils"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -42,14 +44,34 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
-	user.PassWord = password
+	//增加对新增用户的校验
+	validate1 := models.FindUserByName(user.Name)
+	//后面两字段不生效，不在注册页面中显示
+	validate2 := models.FindUserByEmail(user.Email)
+	validate3 := models.FindUserByPhone(user.Phone)
+	if validate1.Name != "" || validate2.Email != "" || validate3.Phone != "" {
+		c.JSON(200, gin.H{
+			"message": "用户名已存在",
+		})
+		return
+	}
+	salt := fmt.Sprintf("%06d", rand.Int31())
+	user.PassWord = utils.MakePassword(password, salt)
+	user.Salt = salt
 	user.LoginTime = time.Now()
 	user.HeartBeatTime = time.Now()
 	user.LoginOutTime = time.Now()
-	models.CreateUser(user)
-	c.JSON(200, gin.H{
-		"message": "新增用户成功",
-	})
+	err := models.CreateUser(user)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "新增用户成功",
+		})
+	} else {
+		c.JSON(200, gin.H{
+			"message": "新增用户失败",
+		})
+		return
+	}
 }
 
 // DeleteUser
@@ -102,4 +124,34 @@ func UpdateUser(c *gin.Context) {
 			"message": "更新用户成功",
 		})
 	}
+}
+
+// GetUser
+// @summary 查找用户
+// @Tags 用户模块
+// @param name query string false "用户名"
+// @param password query string false "密码"
+// @Success 200 {string} json{"code","message"}
+// @Router /user/getUser [post]
+func GetUser(c *gin.Context) {
+	//pwd查询需要解密,分别判断name和pwd存在
+	name := c.Query("name")
+	password := c.Query("password")
+	user := models.FindUserByName(name)
+	if user.Name == "" {
+		c.JSON(200, gin.H{
+			"message": "不存在该用户",
+		})
+		return
+	}
+	flag := utils.ValidPassword(password, user.Salt, user.PassWord)
+	if !flag {
+		c.JSON(200, gin.H{
+			"message": "密码不正确",
+		})
+		return
+	}
+	pwd := utils.MakePassword(password, user.Salt)
+	data := models.GetUser(name, pwd)
+	c.JSON(200, gin.H{"message": data})
 }
