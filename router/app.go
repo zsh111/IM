@@ -17,10 +17,12 @@ func Router() *gin.Engine {
 	//下面设置了页面的访问子页面，下面请求与swag的router一致
 	r.GET("/swagger/*ang", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	r.GET("/index", service.GetIndex)
-	r.GET("/user/getUserList", service.GetUserList)
+	r.POST("/user/loginUser", service.LogInUser)
 	r.GET("/user/createUser", service.CreateUser)
 	r.GET("/user/deleteUser", service.DeleteUser)
 	r.POST("/user/updateUser", service.UpdateUser) //修改请求方式
 	r.POST("/user/getUser", service.GetUser)
+	//发送消息
+	r.GET("/user/sendMsg", service.SendMsg)
 	return r
 }

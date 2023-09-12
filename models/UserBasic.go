@@ -15,7 +15,7 @@ type UserBasic struct {
 	PassWord      string
 	Phone         string `valid:"matches(^1[3-9]{1}\\d{9}$)"` //使用正则匹配电话号码
 	Email         string `valid:"email"`
-	Identity      string
+	Identity      string //用于表示token
 	ClientIP      string
 	ClientPort    string
 	Salt          string //加密
@@ -57,6 +57,17 @@ func FindUserByEmail(email string) UserBasic {
 func FindUserByPhone(Phone string) UserBasic {
 	user := UserBasic{}
 	utils.DB.Where("phone = ?", Phone).First(&user)
+	return user
+}
+
+// 登录逻辑
+func FindUserByNameAndPwd(name string, password string) UserBasic {
+	//按name查找，只返回第一个找到的结果
+	user := UserBasic{}
+	utils.DB.Where("name=? and pass_word=?", name, password).First(&user)
+	str := fmt.Sprintf("%d", time.Now().Unix())
+	temp := utils.MD5Encode(str)
+	utils.DB.Model(&user).Where("id = ?", user.ID).Update("identity", temp)
 	return user
 }
 

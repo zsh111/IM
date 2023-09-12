@@ -1,27 +1,54 @@
 package service
 
+/*-----------------单机不加缓存并发在10w，加入缓存可以达到100w------------------*/
 import (
 	"IMsystem/models"
 	"IMsystem/utils"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
-// GetUserList
-// @summary 用户列表
+// LogInUser
+// @summary 用户登录
 // @Tags 用户模块
+// @param name query string false "用户名"
+// @param password query string false "密码"
 // @Success 200 {string} json{"code","message"}
-// @Router /user/getUserList [get]
-func GetUserList(c *gin.Context) {
+// @Router /user/loginUser [post]
+func LogInUser(c *gin.Context) {
 	//使用gin将信息拿到页面，注意注释必须紧贴函数
-	data := models.GetUserList()
+	data := models.UserBasic{}
+	name := c.Query("name")
+	password := c.Query("password")
+	user := models.FindUserByName(name)
+	if user.Name == "" {
+		c.JSON(200, gin.H{
+			"code":    -1, //0成功 -1失败
+			"message": "用户不存在",
+		})
+		return
+	}
+	flag := utils.ValidPassword(password, user.Salt, user.PassWord)
+	if !flag {
+		c.JSON(200, gin.H{
+			"code":    -1, //0成功 -1失败
+			"message": "密码不正确",
+		})
+		return
+	}
+	pwd := utils.MakePassword(password, user.Salt)
+	data = models.FindUserByNameAndPwd(name, pwd)
 	c.JSON(200, gin.H{
-		"message": data,
+		"code":    0, //0成功 -1失败
+		"message": "登录成功",
+		"data":    data,
 	})
 }
 
@@ -40,6 +67,7 @@ func CreateUser(c *gin.Context) {
 	repassword := c.Query("repassword")
 	if password != repassword {
 		c.JSON(-1, gin.H{
+			"code":    -1,
 			"message": "两次密码不一样!",
 		})
 		return
@@ -51,6 +79,7 @@ func CreateUser(c *gin.Context) {
 	validate3 := models.FindUserByPhone(user.Phone)
 	if validate1.Name != "" || validate2.Email != "" || validate3.Phone != "" {
 		c.JSON(200, gin.H{
+			"code":    -1,
 			"message": "用户名已存在",
 		})
 		return
@@ -64,11 +93,15 @@ func CreateUser(c *gin.Context) {
 	err := models.CreateUser(user)
 	if err != nil {
 		c.JSON(200, gin.H{
+			"code":    0,
 			"message": "新增用户成功",
+			"data":    user,
 		})
 	} else {
 		c.JSON(200, gin.H{
+			"code":    -1,
 			"message": "新增用户失败",
+			"data":    user,
 		})
 		return
 	}
@@ -86,7 +119,9 @@ func DeleteUser(c *gin.Context) {
 	user.ID = uint(id)
 	models.DeleteUser(user)
 	c.JSON(200, gin.H{
+		"code":    -1,
 		"message": "删除用户成功",
+		"data":    user,
 	})
 }
 
@@ -115,13 +150,17 @@ func UpdateUser(c *gin.Context) {
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(200, gin.H{
+			"code":    -1,
 			"message": "更新用户失败",
+			"data":    user,
 		})
 		return
 	} else {
 		models.UpdateUser(user)
 		c.JSON(200, gin.H{
+			"code":    0,
 			"message": "更新用户成功",
+			"data":    user,
 		})
 	}
 }
@@ -140,18 +179,61 @@ func GetUser(c *gin.Context) {
 	user := models.FindUserByName(name)
 	if user.Name == "" {
 		c.JSON(200, gin.H{
+			"code":    -1,
 			"message": "不存在该用户",
+			"data":    user,
 		})
 		return
 	}
 	flag := utils.ValidPassword(password, user.Salt, user.PassWord)
 	if !flag {
 		c.JSON(200, gin.H{
+			"code":    -1,
 			"message": "密码不正确",
+			"data":    user,
 		})
 		return
 	}
 	pwd := utils.MakePassword(password, user.Salt)
 	data := models.GetUser(name, pwd)
-	c.JSON(200, gin.H{"message": data})
+	c.JSON(200, gin.H{
+		"code":    0,
+		"message": "查找成功",
+		"data":    data,
+	})
+}
+
+var upGrade = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func SendMsg(c *gin.Context) {
+	ws, err := upGrade.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer func(ws *websocket.Conn) {
+		err = ws.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(ws)
+	MsgHandler(ws, c)
+
+}
+
+func MsgHandler(ws *websocket.Conn, c *gin.Context) {
+	msg, err := utils.Subscribe(c, utils.PublishKey)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tm := time.Now().Format("2006-01-02 15:04:05")
+	m := fmt.Sprintf("[ws][%s]:%s", tm, msg)
+	err = ws.WriteMessage(1, []byte(m))
+	if err != nil {
+		fmt.Println(err)
+	}
 }

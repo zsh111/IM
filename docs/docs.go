@@ -121,12 +121,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/getUserList": {
-            "get": {
+        "/user/loginUser": {
+            "post": {
                 "tags": [
                     "用户模块"
                 ],
-                "summary": "用户列表",
+                "summary": "用户登录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户名",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "密码",
+                        "name": "password",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "code\",\"message\"}",
